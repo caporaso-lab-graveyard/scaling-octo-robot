@@ -16,8 +16,8 @@ max_log_evalue = 1.0
 minimum_pct_id = 0.55
 
 def bl2biom(bl_lines, max_log_evalue, minimum_pct_id):
-    # Thank you SO: http://stackoverflow.com/a/2600813/3424666
-    data = defaultdict(lambda: defaultdict(int))
+    data = defaultdict(int)
+    sample_ids = set()
     observation_ids = set()
     query_id_field = 0
     subject_id_field = 1
@@ -29,10 +29,14 @@ def bl2biom(bl_lines, max_log_evalue, minimum_pct_id):
             (float(fields[pct_id_field]) / 100. >= minimum_pct_id)):
             sample_id, sequence_id = fields[query_id_field].split('_', 1)
             observation_id = fields[subject_id_field]
-            data[sample_id][observation_id] += 1
+            data[(sample_id, observation_id)] += 1
+            sample_ids.add(sample_id)
             observation_ids.add(observation_id)
-
-    return Table(data, sample_ids=data.keys(), observation_ids=observation_ids)
+    print len(data), len(observation_ids), len(sample_ids)
+    return Table(data,
+                 observation_ids=list(observation_ids),
+                 sample_ids=data.keys(),
+                 shape=(1, 934))
 
 t = bl2biom(open(input_fp, 'U'), max_log_evalue, minimum_pct_id)
 
