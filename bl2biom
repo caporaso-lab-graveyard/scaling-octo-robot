@@ -2,64 +2,38 @@
 
 from sys import argv
 from os.path import split
-from qiime.util import qiime_system_call
+from collections import defaultdict
+from biom import Table
+
+if len(argv) == 1:
+    print "Usage: bl2biom <input-fp> <output-fp>"
+    exit(1)
 
 input_fp = argv[1]
-input_fn = split(input_fp)[1]
-output_fp = 'observation_mapped_%s' % input_fn
-biom_output_fp = 'biom_table_%s' % input_fn
-summarized_biom_fp = 'biom_table_summary_%s' % input_fn
-
-#output_f = open(output_fp, 'w')
-#Open this file
-#InFile = open(InFileName, 'r')
-
-# Update the minimum percent id and the MaxEvalue here - note that RapSearch2 is outputting
-# log(e-value). The MaxEvalue used here should be the log(e-value).
-
-
-#from cogent.parse.blast import MinimalBlatParser9
-from bfillings.blat import MinimalBlatParser9
+output_fp = argv[2]
 
 max_log_evalue = 1.0
 minimum_pct_id = 0.55
 
-def bl9_to_observation_map(raw_output_fp, output_observation_map_fp, max_log_evalue, minimum_pct_id):
-#Generate observation map from .bl9 file
-  result = {}
-  pct_id_field = 2
-  evalue_field = 10
-  output_observation_map_f = open(output_observation_map_fp, 'w')
-  last_observed_query_id = None
-  for summary, blat_results in MinimalBlatParser9(open(raw_output_fp, 'U'), include_column_names=False):
-    for e in blat_results:
-      if (float(e[evalue_field]) <= max_log_evalue and float(e[pct_id_field]) / 100. >= minimum_pct_id):
-        query_id = e[0]
-        subject_id = e[1]
-        if query_id == last_observed_query_id:
-    # we've observed a duplicate hit, ignore this one
-          continue
-        else:
-          last_observed_query_id = query_id
-          try:
-            result[subject_id].append(query_id)
-          except KeyError:
-            result[subject_id] = [query_id]
-    for e in result.items():
-      output_observation_map_f.write('%s\t%s\n' % (e[0], '\t'.join(e[1])))
-    output_observation_map_f.close()
-    return result
+def bl2biom(bl_lines, max_log_evalue, minimum_pct_id):
+    # Thank you SO: http://stackoverflow.com/a/2600813/3424666
+    data = defaultdict(lambda: defaultdict(int))
+    observation_ids = set()
+    query_id_field = 0
+    subject_id_field = 1
+    pct_id_field = 2
+    evalue_field = 10
+    for line in bl_lines:
+        fields = line.split()
+        if ((float(fields[evalue_field]) <= max_log_evalue) and
+            (float(fields[pct_id_field]) / 100. >= minimum_pct_id)):
+            sample_id, sequence_id = fields[query_id_field].split('_', 1)
+            observation_id = fields[subject_id_field]
+            data[sample_id][observation_id] += 1
+            observation_ids.add(observation_id)
 
-mapresult = bl9_to_observation_map(input_fp, output_fp, max_log_evalue, minimum_pct_id)
+    return Table(data, sample_ids=data.keys(), observation_ids=observation_ids)
 
-out, err, retcode = qiime_system_call("make_otu_table.py -i %s -o %s" % (output_fp, biom_output_fp))
-if retcode != 0:
-    print out
-    print err
-    exit
+t = bl2biom(open(input_fp, 'U'), max_log_evalue, minimum_pct_id)
 
-out, err, retcode = qiime_system_call("biom summarize-table -i %s -o %s" % (biom_output_fp, summarized_biom_fp))
-if retcode != 0:
-    print out
-    print err
-    exit
+print t.delimited_self()
