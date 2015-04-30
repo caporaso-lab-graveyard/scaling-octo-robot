@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+
+from sys import argv
+from os.path import split
+from qiime.util import qiime_system_call
+
+input_fp = argv[1]
+input_fn = split(input_fp)[1]
+output_fp = 'observation_mapped_%s' % input_fn
+biom_output_fp = 'biom_table_%s' % input_fn
+summarized_biom_fp = 'biom_table_summary_%s' % input_fn
+
+#output_f = open(output_fp, 'w')
+#Open this file
+#InFile = open(InFileName, 'r')
+
+# Update the minimum percent id and the MaxEvalue here - note that RapSearch2 is outputting
+# log(e-value). The MaxEvalue used here should be the log(e-value).
+
+
+#from cogent.parse.blast import MinimalBlatParser9
+from bfillings.blat import MinimalBlatParser9
+
+max_log_evalue = 1.0
+minimum_pct_id = 0.55
+
+def bl9_to_observation_map(raw_output_fp, output_observation_map_fp, max_log_evalue, minimum_pct_id):
+#Generate observation map from .bl9 file
+  result = {}
+  pct_id_field = 2
+  evalue_field = 10
+  output_observation_map_f = open(output_observation_map_fp, 'w')
+  last_observed_query_id = None
+  for summary, blat_results in MinimalBlatParser9(open(raw_output_fp, 'U'), include_column_names=False):
+    for e in blat_results:
+      if (float(e[evalue_field]) <= max_log_evalue and float(e[pct_id_field]) / 100. >= minimum_pct_id):
+        query_id = e[0]
+        subject_id = e[1]
+        if query_id == last_observed_query_id:
+    # we've observed a duplicate hit, ignore this one
+          continue
+        else:
+          last_observed_query_id = query_id
+          try:
+            result[subject_id].append(query_id)
+          except KeyError:
+            result[subject_id] = [query_id]
+    for e in result.items():
+      output_observation_map_f.write('%s\t%s\n' % (e[0], '\t'.join(e[1])))
+    output_observation_map_f.close()
+    return result
+
+mapresult = bl9_to_observation_map(input_fp, output_fp, max_log_evalue, minimum_pct_id)
+
+out, err, retcode = qiime_system_call("make_otu_table.py -i %s -o %s" % (output_fp, biom_output_fp))
+if retcode != 0:
+    print out
+    print err
+    exit
+
+out, err, retcode = qiime_system_call("biom summarize-table -i %s -o %s" % (biom_output_fp, summarized_biom_fp))
+if retcode != 0:
+    print out
+    print err
+    exit
