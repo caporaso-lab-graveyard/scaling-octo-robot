@@ -1,24 +1,16 @@
 #!/usr/bin/env python
 
-from sys import argv
-from os.path import split
-from collections import defaultdict
-from biom import Table
-
-if len(argv) == 1:
-    print "Usage: bl2biom <input-fp> <output-fp>"
-    exit(1)
-
-input_fp = argv[1]
-output_fp = argv[2]
-
-max_log_evalue = 1.0
-minimum_pct_id = 0.55
+import sys
+import os.path
+import collections
+import biom
 
 def bl2biom(bl_lines, max_log_evalue, minimum_pct_id):
-    data = defaultdict(int)
-    sample_ids = set()
-    observation_ids = set()
+    data = collections.defaultdict(int)
+    sample_idxs = {}
+    sample_ids = []
+    observation_idxs = {}
+    observation_ids = []
     query_id_field = 0
     subject_id_field = 1
     pct_id_field = 2
@@ -27,17 +19,45 @@ def bl2biom(bl_lines, max_log_evalue, minimum_pct_id):
         fields = line.split()
         if ((float(fields[evalue_field]) <= max_log_evalue) and
             (float(fields[pct_id_field]) / 100. >= minimum_pct_id)):
+
             sample_id, sequence_id = fields[query_id_field].split('_', 1)
             observation_id = fields[subject_id_field]
-            data[(sample_id, observation_id)] += 1
-            sample_ids.add(sample_id)
-            observation_ids.add(observation_id)
-    print len(data), len(observation_ids), len(sample_ids)
-    return Table(data,
-                 observation_ids=list(observation_ids),
-                 sample_ids=data.keys(),
-                 shape=(1, 934))
 
-t = bl2biom(open(input_fp, 'U'), max_log_evalue, minimum_pct_id)
+            try:
+                observation_idx = observation_idxs[observation_id]
+            except KeyError:
+                observation_idx = len(observation_ids)
+                observation_idxs[observation_id] = observation_idx
+                observation_ids.append(observation_id)
 
-print t.delimited_self()
+            try:
+                sample_idx = sample_idxs[sample_id]
+            except KeyError:
+                sample_idx = len(sample_ids)
+                sample_idxs[sample_id] = sample_idx
+                sample_ids.append(sample_id)
+
+            data[(observation_idx, sample_idx)] += 1
+    return biom.Table(data,
+                      observation_ids=observation_ids,
+                      sample_ids=sample_ids)
+
+if __name__ == "__main__":
+    usage = "Usage: bl2biom <input-filepath> <output-filepath>"
+    if len(sys.argv) != 3:
+        sys.exit(usage)
+
+    input_fp = sys.argv[1]
+    output_fp = sys.argv[2]
+
+    if os.path.exists(output_fp):
+        sys.exit("Output filepath exists. "
+                 "Please specify a different output filepath.")
+
+    max_log_evalue = 1.0
+    minimum_pct_id = 0.55
+
+    t = bl2biom(open(input_fp, 'U'), max_log_evalue, minimum_pct_id)
+    with open(output_fp, 'w') as out_f:
+        t.to_json("[bl2biom](https://github.com/gregcaporaso/scaling-octo-robot)",
+                  out_f)
