@@ -75,8 +75,6 @@ def uc2biom(uc_lines,
             raise ValueError(
                 "Unexpected result parsing line:\n%s" % '\t'.join(record))
 
-    print observation_ids
-    print sample_ids
     return biom.Table(data,
                       observation_ids=observation_ids,
                       sample_ids=sample_ids)
