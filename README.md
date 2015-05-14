@@ -1,4 +1,4 @@
-**This is experimental, untested code!! Do not use this for production analyses.**
+**This is an experimental, untested prototype!! Do not use this for production analyses.**
 
 This will be ported to the ``biom-format`` project at some point. You can track progress on this on [biocore/biom-format#627](https://github.com/biocore/biom-format/issues/627). Feedback is welcome.
 
