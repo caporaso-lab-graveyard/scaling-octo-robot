@@ -48,7 +48,10 @@ def uc2biom(uc_lines,
         sample_id = query_id.split('_')[0]
         observation_id = record[9].split()[0]
         if observation_id == '*':
-            continue
+            if hit_type  == 'S':
+                observation_id = query_id
+            else:
+                continue
 
         try:
             sample_idx = sample_idxs[sample_id]
