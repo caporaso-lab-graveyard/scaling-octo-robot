@@ -11,6 +11,7 @@ def get_next_record_type(lines, types):
         if line and line[0] in types:
             yield line.split('\t')
     return
+
 def uc2biom(uc_lines,
             seed_to_otu_ids=None,
             error_on_multiple_hits=True):
