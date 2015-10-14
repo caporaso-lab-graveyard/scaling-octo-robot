@@ -55,3 +55,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# example command output files
+vsearch-derep.biom
+vsearch-derep.fna
+vsearch-derep.uc
+test.biom

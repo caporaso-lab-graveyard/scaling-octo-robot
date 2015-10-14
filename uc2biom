@@ -2,6 +2,7 @@
 
 import sys
 import biom
+import skbio
 import os.path
 import collections
 
@@ -11,6 +12,17 @@ def get_next_record_type(lines, types):
         if line and line[0] in types:
             yield line.split('\t')
     return
+
+def build_seq_to_otu_id_map(fasta_fp):
+    """
+    fasta_fp:
+    """
+    results = {}
+    for s in skbio.io.read(fasta_fp, format='fasta'):
+        otu_id = s.metadata['id']
+        seq_id = s.metadata['description'].split()[0]
+        results[seq_id] = otu_id
+    return results
 
 def uc2biom(uc_lines,
             seed_to_otu_ids=None,
@@ -63,7 +75,7 @@ def uc2biom(uc_lines,
                 observation_id = seed_to_otu_ids[observation_id]
             except(KeyError):
                 raise KeyError("Unknown seed identifier observed: %s." % observation_id)
-            
+
         try:
             observation_idx = observation_idxs[observation_id]
         except KeyError:
@@ -86,21 +98,26 @@ def uc2biom(uc_lines,
                       sample_ids=sample_ids)
 
 if __name__ == "__main__":
-    usage = "Usage: uc2biom <input-filepath> <output-filepath>"
-    if len(sys.argv) != 3:
+    usage = "Usage: uc2biom <input-uc> <output-biom> [representative-set-fasta]"
+    if len(sys.argv) != 3 and len(sys.argv) != 4:
         sys.exit(usage)
 
-    input_fp = sys.argv[1]
-    output_fp = sys.argv[2]
+    uc_fp = sys.argv[1]
+    biom_fp = sys.argv[2]
 
-    if os.path.exists(output_fp):
+    if len(sys.argv) == 4:
+        fasta_fp = sys.argv[3]
+        print(fasta_fp)
+        seq_to_otu_id_map = build_seq_to_otu_id_map(fasta_fp)
+    else:
+        seq_to_otu_id_map = None
+
+    if os.path.exists(biom_fp):
         sys.exit("Output filepath exists. "
                  "Please specify a different output filepath.")
 
-    max_log_evalue = 1.0
-    minimum_pct_id = 0.55
-
-    t = uc2biom(open(input_fp, 'U'), True)
-    with open(output_fp, 'w') as out_f:
+    t = uc2biom(open(uc_fp, 'U'),
+                seed_to_otu_ids=seq_to_otu_id_map)
+    with open(biom_fp, 'w') as out_f:
         t.to_json("[uc2biom](https://github.com/gregcaporaso/scaling-octo-robot)",
                   out_f)
