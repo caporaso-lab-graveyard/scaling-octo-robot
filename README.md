@@ -122,8 +122,8 @@ vsearch dereplication to BIOM and representative sequences
 This requires ``vsearch 1.7.0`` or later. Observation ids will be sha1 hashs of the sequences (since it's dereplication, all sequences in an OTU are identical). This means that the resulting BIOM tables can be safely merged across runs of these commands (provided that your sample ids don't overlap unless they should - you should be using [CualID](https://peerj.com/preprints/1431/) for your sample identifiers to help with that).
 
 ```bash
-$ vsearch --derep_fulllength seqs.fna --output vsearch-derep.fna --uc vsearch-derep.uc --relabel_sha1 --relabel_keep
-$ ./uc2biom vsearch-derep.uc vsearch-derep.biom vsearch-derep.fna
+$ vsearch --derep_fulllength seqs.fna --output vsearch-derep-rep-set.fna --uc vsearch-derep.uc --relabel_sha1 --relabel_keep
+$ ./uc2biom vsearch-derep.uc vsearch-derep.biom vsearch-derep-rep-set.fna
 
 $ biom summarize-table -i vsearch-derep.biom
 Num samples: 9

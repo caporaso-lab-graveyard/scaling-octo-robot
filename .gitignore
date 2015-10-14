@@ -58,6 +58,6 @@ target/
 
 # example command output files
 vsearch-derep.biom
-vsearch-derep.fna
+vsearch-derep-rep-set.fna
 vsearch-derep.uc
 test.biom
